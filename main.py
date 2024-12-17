@@ -49,6 +49,23 @@ async def check_credentials(websocket: ServerConnection) -> bool:
 		return False
 
 
+async def forward_redis_messages(pubsub: redis.client.PubSub):
+	"""
+	Forwards all JSON messages from the PubSub connection to all connected clients.
+	"""
+	async for message in pubsub.listen():
+		if message is not None:
+			try:
+				json_message = json.loads(message.get("data", ""))
+			except json.JSONDecodeError:
+				pass
+			else:
+				websockets.broadcast(
+					connections=CONNECTIONS,
+					message=json_message
+				)
+
+
 async def main():
 	ssl_context = ssl.create_default_context()
 	redis_host = os.environ.get("REDIS_HOST", "localhost")
@@ -61,7 +78,7 @@ async def main():
 			port=PORT,
 			ssl=ssl_context,
 		):
-			await asyncio.Future()
+			await forward_redis_messages(pubsub=pubsub)
 
 if __name__ == "__main__":
 	asyncio.run(main())

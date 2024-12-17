@@ -18,6 +18,7 @@ class ConnectionManager:
 		self.PORT = 80
 		self.connections = set()
 		self.redis_connection: redis.client.Redis | None = None
+		self.token = "Hello!"
 
 	async def run(self):
 		ssl_context = ssl.create_default_context()
@@ -37,9 +38,24 @@ class ConnectionManager:
 		# Register
 		pass
 
-	async def check_credentials(self):
-		# Check credentials
-		pass
+	async def check_credentials(self, websocket: ServerConnection) -> bool:
+		"""
+		Intercepts the first message from a new connection,
+		and checks for a specified token / password.
+		"""
+		try:
+			async with asyncio.timeout(10):
+				first_message = await websocket.recv()
+			json_message = json.loads(first_message)
+		except asyncio.TimeoutError:
+			return False
+		except json.decoder.JSONDecodeError:
+			return False
+		else:
+			if json_message.get("operation") == "AUTHENTICATE":
+				if json_message.get("data", {}).get("token") == self.token:
+					return True
+			return False
 
 	async def parse_received_json_message(self):
 		pass
@@ -68,24 +84,7 @@ async def register(websocket: ServerConnection):
 		await websocket.close()
 
 
-async def check_credentials(websocket: ServerConnection) -> bool:
-	"""
-	Intercepts the first message from a new connection,
-	and checks for a specified token / password.
-	"""
-	try:
-		async with asyncio.timeout(10):
-			first_message = await websocket.recv()
-		json_message = json.loads(first_message)
-	except asyncio.TimeoutError:
-		return False
-	except json.decoder.JSONDecodeError:
-		return False
-	else:
-		if json_message.get("operation") == "AUTHENTICATE":
-			if json_message.get("data", {}).get("token") == "Hello!":
-				return True
-		return False
+
 
 
 async def parse_received_json_message(json_message):

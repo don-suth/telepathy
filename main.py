@@ -17,13 +17,13 @@ async def register(websocket: ServerConnection):
 	if credentials_valid:
 		CONNECTIONS.add(websocket)
 		try:
-			async def test_send_loop():
-				while True:
-					await websocket.send("Ping!")
-					await asyncio.sleep(10)
-			looping_task = asyncio.create_task(test_send_loop())
-			await websocket.wait_closed()
-			looping_task.cancel()
+			async for message in websocket:
+				try:
+					json_message = json.loads(message)
+				except json.JSONDecodeError:
+					pass
+				else:
+					pass
 		except websockets.ConnectionClosed:
 			pass
 		finally:
@@ -50,6 +50,15 @@ async def check_credentials(websocket: ServerConnection) -> bool:
 			if json_message.get("data", {}).get("token") == "Hello!":
 				return True
 		return False
+
+
+async def parse_received_json_message(json_message):
+	operation = json_message.get("operation", "")
+	data = json_message.get("data", {})
+	match operation:
+		case "UPDATE":
+			# Update the status of the door.
+			pass
 
 
 async def forward_redis_messages(pubsub: redis.client.PubSub):

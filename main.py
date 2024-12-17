@@ -60,8 +60,21 @@ class ConnectionManager:
 	async def parse_received_json_message(self):
 		pass
 
-	async def forward_redis_messages(self):
-		pass
+	async def forward_redis_messages(self, pubsub: redis.client.PubSub):
+		"""
+		Forwards all JSON messages from the PubSub connection to all connected clients.
+		"""
+		async for message in pubsub.listen():
+			if message is not None:
+				try:
+					json_message = json.loads(message.get("data", ""))
+				except json.JSONDecodeError:
+					pass
+				else:
+					websockets.broadcast(
+						connections=self.connections,
+						message=json_message
+					)
 
 
 async def register(websocket: ServerConnection):
@@ -96,21 +109,7 @@ async def parse_received_json_message(json_message):
 			pass
 
 
-async def forward_redis_messages(pubsub: redis.client.PubSub):
-	"""
-	Forwards all JSON messages from the PubSub connection to all connected clients.
-	"""
-	async for message in pubsub.listen():
-		if message is not None:
-			try:
-				json_message = json.loads(message.get("data", ""))
-			except json.JSONDecodeError:
-				pass
-			else:
-				websockets.broadcast(
-					connections=CONNECTIONS,
-					message=json_message
-				)
+
 
 
 async def main():

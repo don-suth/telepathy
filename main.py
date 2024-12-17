@@ -30,6 +30,7 @@ class ConnectionManager:
 				await self.forward_redis_messages(pubsub=pubsub)
 
 	async def handle_connection(self, websocket: ServerConnection):
+		# Handles messages received from connections
 		credentials_valid = await self.check_credentials(websocket=websocket)
 		if credentials_valid:
 			self.connections.add(websocket)
@@ -40,7 +41,7 @@ class ConnectionManager:
 					except json.JSONDecodeError:
 						pass
 					else:
-						pass
+						await self.parse_received_json_message(json_message=json_message)
 			except websockets.ConnectionClosed:
 				pass
 			finally:
@@ -73,7 +74,12 @@ class ConnectionManager:
 		match operation:
 			case "UPDATE":
 				# Update the status of the door.
-				pass
+				door_status = data.get("door_status")
+				match door_status:
+					case "OPEN":
+						await self.set_door_open()
+					case "CLOSED":
+						await self.set_door_closed()
 
 	async def forward_redis_messages(self, pubsub: redis.client.PubSub):
 		"""
@@ -90,6 +96,16 @@ class ConnectionManager:
 						connections=self.connections,
 						message=json_message
 					)
+
+	async def set_door_open(self):
+		# Sets the door status to open in Redis, for other applications to pick up on.
+		await self.redis_connection.set(name="door:status", value="OPEN")
+		await self.redis_connection.publish(channel="door:updates", message="OPEN")
+
+	async def set_door_closed(self):
+		# Sets the door status to closed in Redis, for other applications to pick up on.
+		await self.redis_connection.set(name="door:status", value="CLOSED")
+		await self.redis_connection.publish(channel="door:updates", message="CLOSED")
 
 
 if __name__ == "__main__":

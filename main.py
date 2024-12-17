@@ -16,7 +16,6 @@ class ConnectionManager:
 		self.token = "Hello!"
 
 	async def run(self):
-		ssl_context = ssl.create_default_context()
 		redis_host = os.environ.get("REDIS_HOST", "localhost")
 		self.redis_connection = await redis.Redis(host=redis_host, port=6379, decode_responses=True)
 		async with self.redis_connection.pubsub() as pubsub:
@@ -25,7 +24,6 @@ class ConnectionManager:
 					handler=self.handle_connection,
 					host=self.HOST,
 					port=self.PORT,
-					ssl=ssl_context,
 			):
 				print(f"Running on {self.HOST}:{self.PORT}")
 				await self.forward_redis_messages(pubsub=pubsub)

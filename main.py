@@ -4,6 +4,7 @@ from websockets.asyncio.server import ServerConnection
 import redis.asyncio as redis
 import ssl
 import os
+import json
 
 HOST = "0.0.0.0"
 PORT = 80
@@ -39,9 +40,12 @@ async def check_credentials(websocket: ServerConnection) -> bool:
 	try:
 		async with asyncio.timeout(10):
 			first_message = await websocket.recv()
-			# TODO: Check credentials here.
-			return True
+		json_message = json.loads(first_message)
+		# TODO: Check credentials here.
+		return True
 	except asyncio.TimeoutError:
+		return False
+	except json.decoder.JSONDecodeError:
 		return False
 
 

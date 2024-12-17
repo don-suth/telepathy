@@ -27,6 +27,7 @@ class ConnectionManager:
 					port=self.PORT,
 					ssl=ssl_context,
 			):
+				print(f"Running on {self.HOST}:{self.PORT}")
 				await self.forward_redis_messages(pubsub=pubsub)
 
 	async def handle_connection(self, websocket: ServerConnection):

@@ -91,6 +91,8 @@ class ConnectionManager:
 					json_message = json.loads(message.get("data", ""))
 				except json.JSONDecodeError:
 					pass
+				except TypeError:
+					pass
 				else:
 					websockets.broadcast(
 						connections=self.connections,

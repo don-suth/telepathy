@@ -46,7 +46,7 @@ async def check_credentials(websocket: ServerConnection) -> bool:
 	except json.decoder.JSONDecodeError:
 		return False
 	else:
-		if json_message.get("operation") == "UPDATE":
+		if json_message.get("operation") == "AUTHENTICATE":
 			if json_message.get("data", {}).get("token") == "Hello!":
 				return True
 		return False

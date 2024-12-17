@@ -41,11 +41,14 @@ async def check_credentials(websocket: ServerConnection) -> bool:
 		async with asyncio.timeout(10):
 			first_message = await websocket.recv()
 		json_message = json.loads(first_message)
-		# TODO: Check credentials here.
-		return True
 	except asyncio.TimeoutError:
 		return False
 	except json.decoder.JSONDecodeError:
+		return False
+	else:
+		if json_message.get("operation") == "UPDATE":
+			if json_message.get("data", {}).get("token") == "Hello!":
+				return True
 		return False
 
 

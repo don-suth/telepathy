@@ -6,11 +6,6 @@ import ssl
 import os
 import json
 
-HOST = "0.0.0.0"
-PORT = 80
-
-CONNECTIONS = set()
-
 
 class ConnectionManager:
 	def __init__(self):
@@ -27,16 +22,31 @@ class ConnectionManager:
 		async with self.redis_connection.pubsub() as pubsub:
 			await pubsub.subscribe("telepathy:json")
 			async with websockets.serve(
-					handler=register,
-					host=HOST,
-					port=PORT,
+					handler=self.handle_connection,
+					host=self.HOST,
+					port=self.PORT,
 					ssl=ssl_context,
 			):
-				await forward_redis_messages(pubsub=pubsub)
+				await self.forward_redis_messages(pubsub=pubsub)
 
 	async def handle_connection(self, websocket: ServerConnection):
-		# Register
-		pass
+		credentials_valid = await self.check_credentials(websocket=websocket)
+		if credentials_valid:
+			self.connections.add(websocket)
+			try:
+				async for message in websocket:
+					try:
+						json_message = json.loads(message)
+					except json.JSONDecodeError:
+						pass
+					else:
+						pass
+			except websockets.ConnectionClosed:
+				pass
+			finally:
+				self.connections.remove(websocket)
+		else:
+			await websocket.close()
 
 	async def check_credentials(self, websocket: ServerConnection) -> bool:
 		"""
@@ -57,8 +67,13 @@ class ConnectionManager:
 					return True
 			return False
 
-	async def parse_received_json_message(self):
-		pass
+	async def parse_received_json_message(self, json_message):
+		operation = json_message.get("operation", "")
+		data = json_message.get("data", {})
+		match operation:
+			case "UPDATE":
+				# Update the status of the door.
+				pass
 
 	async def forward_redis_messages(self, pubsub: redis.client.PubSub):
 		"""
@@ -77,54 +92,6 @@ class ConnectionManager:
 					)
 
 
-async def register(websocket: ServerConnection):
-	credentials_valid = await check_credentials(websocket=websocket)
-	if credentials_valid:
-		CONNECTIONS.add(websocket)
-		try:
-			async for message in websocket:
-				try:
-					json_message = json.loads(message)
-				except json.JSONDecodeError:
-					pass
-				else:
-					pass
-		except websockets.ConnectionClosed:
-			pass
-		finally:
-			CONNECTIONS.remove(websocket)
-	else:
-		await websocket.close()
-
-
-
-
-
-async def parse_received_json_message(json_message):
-	operation = json_message.get("operation", "")
-	data = json_message.get("data", {})
-	match operation:
-		case "UPDATE":
-			# Update the status of the door.
-			pass
-
-
-
-
-
-async def main():
-	ssl_context = ssl.create_default_context()
-	redis_host = os.environ.get("REDIS_HOST", "localhost")
-	redis_connection = await redis.Redis(host=redis_host, port=6379, decode_responses=True)
-	async with redis_connection.pubsub() as pubsub:
-		await pubsub.subscribe("telepathy:json")
-		async with websockets.serve(
-			handler=register,
-			host=HOST,
-			port=PORT,
-			ssl=ssl_context,
-		):
-			await forward_redis_messages(pubsub=pubsub)
-
 if __name__ == "__main__":
-	asyncio.run(main())
+	manager = ConnectionManager()
+	asyncio.run(manager.run())

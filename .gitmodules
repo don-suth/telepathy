@@ -1,0 +1,3 @@
+[submodule "ritual_events"]
+	path = ritual_events
+	url = https://github.com/don-suth/ritual_events

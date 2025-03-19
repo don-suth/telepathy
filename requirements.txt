@@ -1,2 +1,7 @@
+annotated-types==0.7.0
+pydantic==2.10.6
+pydantic-extra-types==2.10.3
+pydantic_core==2.27.2
 redis==5.2.1
+typing_extensions==4.12.2
 websockets==14.1

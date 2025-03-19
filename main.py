@@ -5,6 +5,8 @@ import redis.asyncio as redis
 import ssl
 import os
 import json
+from ritual_events.from_phantasm import AuthenticateAction
+from pydantic import ValidationError
 
 
 class ConnectionManager:
@@ -57,14 +59,16 @@ class ConnectionManager:
 			async with asyncio.timeout(10):
 				first_message = await websocket.recv()
 			json_message = json.loads(first_message)
+			authenticate_action = AuthenticateAction.model_validate(json_message)
 		except asyncio.TimeoutError:
 			return False
 		except json.decoder.JSONDecodeError:
 			return False
+		except ValidationError:
+			return False
 		else:
-			if json_message.get("operation") == "AUTHENTICATE":
-				if json_message.get("data", {}).get("token") == self.token:
-					return True
+			if authenticate_action.data.token == self.token:
+				return True
 			return False
 
 	async def parse_received_json_message(self, json_message):

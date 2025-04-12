@@ -99,7 +99,7 @@ class ConnectionManager:
 				else:
 					websockets.broadcast(
 						connections=self.connections,
-						message=json_message
+						message=json.dumps(json_message)
 					)
 
 	async def set_door_open(self):

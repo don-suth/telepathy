@@ -5,7 +5,12 @@ import redis.asyncio as redis
 import ssl
 import os
 import json
-from ritual_events.from_phantasm import AuthenticateAction
+from ritual_events.from_phantasm import (
+	OpenDoorEvent,
+	CloseDoorEvent,
+	AuthenticateEvent,
+	validate_from_phantasm_json
+)
 from pydantic import ValidationError
 
 
@@ -37,12 +42,7 @@ class ConnectionManager:
 			self.connections.add(websocket)
 			try:
 				async for message in websocket:
-					try:
-						json_message = json.loads(message)
-					except json.JSONDecodeError:
-						pass
-					else:
-						await self.parse_received_json_message(json_message=json_message)
+					await self.parse_received_json_message(json_message=message)
 			except websockets.ConnectionClosed:
 				pass
 			finally:
@@ -58,31 +58,26 @@ class ConnectionManager:
 		try:
 			async with asyncio.timeout(10):
 				first_message = await websocket.recv()
-			json_message = json.loads(first_message)
-			authenticate_action = AuthenticateAction.model_validate(json_message)
+			event = validate_from_phantasm_json(first_message)
+			match event:
+				case AuthenticateEvent(token=self.token):
+					return True
+				case _:
+					return False
 		except asyncio.TimeoutError:
 			return False
-		except json.decoder.JSONDecodeError:
-			return False
-		except ValidationError:
-			return False
 		else:
-			if authenticate_action.data.token == self.token:
-				return True
 			return False
 
 	async def parse_received_json_message(self, json_message):
-		operation = json_message.get("operation", "")
-		data = json_message.get("data", {})
-		match operation:
-			case "UPDATE":
-				# Update the status of the door.
-				door_status = data.get("door_status")
-				match door_status:
-					case "OPEN":
-						await self.set_door_open()
-					case "CLOSED":
-						await self.set_door_closed()
+		event = validate_from_phantasm_json(json_event=json_message)
+		match event:
+			case OpenDoorEvent():
+				await self.set_door_open()
+			case CloseDoorEvent():
+				await self.set_door_closed()
+			case _:
+				pass
 
 	async def forward_redis_messages(self, pubsub: redis.client.PubSub):
 		"""

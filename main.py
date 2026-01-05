@@ -95,9 +95,9 @@ class ConnectionManager:
 				case {"type": "message", "channel": "clock:updates", "data": "UPDATED"}:
 					await self.send_clock_settings_update()
 				case {"type": "message", "channel": "door:updates", "data": "OPEN"}:
-					pass
+					await self.send_door_open_update()
 				case {"type": "message", "channel": "door:updates", "data": "CLOSED"}:
-					pass
+					await self.send_door_closed_update()
 				case _:
 					pass
 

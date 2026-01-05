@@ -11,6 +11,9 @@ from ritual_events.from_phantasm import (
 	AuthenticateEvent,
 	validate_from_phantasm_json
 )
+from ritual_events.to_phantasm import (
+	UpdateClockSettingsEvent
+)
 from pydantic import ValidationError
 
 
@@ -26,7 +29,9 @@ class ConnectionManager:
 		redis_host = os.environ.get("REDIS_HOST", "localhost")
 		self.redis_connection = await redis.Redis(host=redis_host, port=6379, decode_responses=True)
 		async with self.redis_connection.pubsub() as pubsub:
-			await pubsub.subscribe("telepathy:json")
+			# Subscribe to clock settings updates and door status updates
+			await pubsub.subscribe("clock:updates")
+			await pubsub.subscribe("door:updates")
 			async with websockets.serve(
 					handler=self.handle_connection,
 					host=self.HOST,
@@ -85,18 +90,24 @@ class ConnectionManager:
 		Forwards all JSON messages from the PubSub connection to all connected clients.
 		"""
 		async for message in pubsub.listen():
-			if message is not None:
-				try:
-					json_message = json.loads(message.get("data", ""))
-				except json.JSONDecodeError:
-					pass
-				except TypeError:
-					pass
-				else:
+			match message:
+				case {"type": "message", "channel": "clock:updates", "message": "UPDATED"}:
+					new_brightness, new_colour, new_seconds = await self.redis_connection.mget(
+						["clock:brightness", "clock:colour", "clock:seconds"]
+					)
+					new_event = UpdateClockSettingsEvent(
+						new_brightness=new_brightness,
+						new_text_colour=new_colour,
+						alternate_seconds=new_seconds
+					)
 					websockets.broadcast(
 						connections=self.connections,
-						message=json.dumps(json_message)
+						message=new_event.model_dump_json()
 					)
+				case {"type": "message", "channel": "door:updates", "message": new_status}:
+					pass
+				case _:
+					pass
 
 	async def set_door_open(self):
 		# Currently unused

@@ -99,14 +99,12 @@ class ConnectionManager:
 					)
 
 	async def set_door_open(self):
-		# Sets the door status to open in Redis, for other applications to pick up on.
-		await self.redis_connection.set(name="door:status", value="OPEN")
-		await self.redis_connection.publish(channel="door:updates", message="OPEN")
+		# Currently unused
+		pass
 
 	async def set_door_closed(self):
-		# Sets the door status to closed in Redis, for other applications to pick up on.
-		await self.redis_connection.set(name="door:status", value="CLOSED")
-		await self.redis_connection.publish(channel="door:updates", message="CLOSED")
+		# Currently unused
+		pass
 
 
 if __name__ == "__main__":

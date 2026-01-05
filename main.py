@@ -45,6 +45,7 @@ class ConnectionManager:
 		credentials_valid = await self.check_credentials(websocket=websocket)
 		if credentials_valid:
 			self.connections.add(websocket)
+			await self.send_clock_settings_update()
 			try:
 				async for message in websocket:
 					await self.parse_received_json_message(json_message=message)
@@ -92,22 +93,25 @@ class ConnectionManager:
 		async for message in pubsub.listen():
 			match message:
 				case {"type": "message", "channel": "clock:updates", "data": "UPDATED"}:
-					new_brightness, new_colour, new_seconds = await self.redis_connection.mget(
-						["clock:brightness", "clock:colour", "clock:seconds"]
-					)
-					new_event = UpdateClockSettingsEvent(
-						new_brightness=new_brightness,
-						new_text_colour=new_colour,
-						alternate_seconds=new_seconds
-					)
-					websockets.broadcast(
-						connections=self.connections,
-						message=new_event.model_dump_json()
-					)
+					await self.send_clock_settings_update()
 				case {"type": "message", "channel": "door:updates", "data": new_status}:
 					pass
 				case _:
 					pass
+
+	async def send_clock_settings_update(self):
+		new_brightness, new_colour, new_seconds = await self.redis_connection.mget(
+			["clock:brightness", "clock:colour", "clock:seconds"]
+		)
+		new_event = UpdateClockSettingsEvent(
+			new_brightness=new_brightness,
+			new_text_colour=new_colour,
+			alternate_seconds=new_seconds
+		)
+		websockets.broadcast(
+			connections=self.connections,
+			message=new_event.model_dump_json()
+		)
 
 	async def set_door_open(self):
 		# Currently unused

@@ -6,13 +6,13 @@ import ssl
 import os
 import json
 from ritual_events.from_phantasm import (
-	OpenDoorEvent,
-	CloseDoorEvent,
 	AuthenticateEvent,
 	validate_from_phantasm_json
 )
 from ritual_events.to_phantasm import (
-	UpdateClockSettingsEvent
+	UpdateClockSettingsEvent,
+	OpenDoorEvent,
+	CloseDoorEvent,
 )
 from pydantic import ValidationError
 
@@ -94,7 +94,9 @@ class ConnectionManager:
 			match message:
 				case {"type": "message", "channel": "clock:updates", "data": "UPDATED"}:
 					await self.send_clock_settings_update()
-				case {"type": "message", "channel": "door:updates", "data": new_status}:
+				case {"type": "message", "channel": "door:updates", "data": "OPEN"}:
+					pass
+				case {"type": "message", "channel": "door:updates", "data": "CLOSED"}:
 					pass
 				case _:
 					pass
@@ -113,13 +115,19 @@ class ConnectionManager:
 			message=new_event.model_dump_json()
 		)
 
-	async def set_door_open(self):
-		# Currently unused
-		pass
+	async def send_door_open_update(self):
+		new_event = OpenDoorEvent()
+		websockets.broadcast(
+			connections=self.connections,
+			message=new_event.model_dump_json()
+		)
 
-	async def set_door_closed(self):
-		# Currently unused
-		pass
+	async def send_door_closed_update(self):
+		new_event = CloseDoorEvent()
+		websockets.broadcast(
+			connections=self.connections,
+			message=new_event.model_dump_json()
+		)
 
 
 if __name__ == "__main__":

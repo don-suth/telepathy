@@ -72,10 +72,11 @@ class ConnectionManager:
 	async def parse_received_json_message(self, json_message):
 		event = validate_from_phantasm_json(json_event=json_message)
 		match event:
-			case OpenDoorEvent():
-				await self.set_door_open()
-			case CloseDoorEvent():
-				await self.set_door_closed()
+			# Door Events currently won't be coming from Phantasm
+			# case OpenDoorEvent():
+			# 	await self.set_door_open()
+			# case CloseDoorEvent():
+			# 	await self.set_door_closed()
 			case _:
 				pass
 

@@ -45,7 +45,11 @@ class ConnectionManager:
 		credentials_valid = await self.check_credentials(websocket=websocket)
 		if credentials_valid:
 			self.connections.add(websocket)
+			# Send the current clock settings and Door status immediately.
 			await self.send_clock_settings_update()
+			door_status = await self.redis_connection.get("door:status")
+			if door_status != "OPEN":
+				await self.send_door_closed_update()
 			try:
 				async for message in websocket:
 					await self.parse_received_json_message(json_message=message)

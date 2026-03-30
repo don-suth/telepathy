@@ -141,10 +141,10 @@ class ConnectionManager:
 			name="letmein:stream",
 			min=stream_id, max=stream_id,
 			count=1
-		)
+		)[0]
 		new_event = LetMeInEvent(
-			name=letmein_data[0]["name"],
-			entrance=letmein_data[0]["entrance"]
+			name=letmein_data["name"],
+			entrance=letmein_data["entrance"]
 		)
 		websockets.broadcast(
 			connections=self.connections,

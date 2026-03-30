@@ -32,6 +32,7 @@ class ConnectionManager:
 			# Subscribe to clock settings updates and door status updates
 			await pubsub.subscribe("clock:updates")
 			await pubsub.subscribe("door:updates")
+			await pubsub.subscribe("letmein:updates")
 			async with websockets.serve(
 					handler=self.handle_connection,
 					host=self.HOST,

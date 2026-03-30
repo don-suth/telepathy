@@ -137,11 +137,12 @@ class ConnectionManager:
 		)
 
 	async def send_letmein_request(self, stream_id):
-		_, letmein_data = await self.redis_connection.xrange(
+		stream_data = await self.redis_connection.xrange(
 			name="letmein:stream",
 			min=stream_id, max=stream_id,
 			count=1
-		)[0]
+		)
+		_, letmein_data = stream_data[0]
 		new_event = LetMeInEvent(
 			name=letmein_data["name"],
 			entrance=letmein_data["entrance"]

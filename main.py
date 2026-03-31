@@ -12,7 +12,7 @@ from ritual_events.from_phantasm import (
 from ritual_events.to_phantasm import (
 	UpdateClockSettingsEvent,
 	OpenDoorEvent,
-	CloseDoorEvent,
+	CloseDoorEvent, LetMeInEvent,
 )
 from pydantic import ValidationError
 
@@ -32,6 +32,7 @@ class ConnectionManager:
 			# Subscribe to clock settings updates and door status updates
 			await pubsub.subscribe("clock:updates")
 			await pubsub.subscribe("door:updates")
+			await pubsub.subscribe("letmein:updates")
 			async with websockets.serve(
 					handler=self.handle_connection,
 					host=self.HOST,
@@ -102,6 +103,8 @@ class ConnectionManager:
 					await self.send_door_open_update()
 				case {"type": "message", "channel": "door:updates", "data": "CLOSED"}:
 					await self.send_door_closed_update()
+				case {"type": "message", "channel": "letmein:updates", "data": stream_id}:
+					await self.send_letmein_request(stream_id)
 				case _:
 					pass
 
@@ -128,6 +131,22 @@ class ConnectionManager:
 
 	async def send_door_closed_update(self):
 		new_event = CloseDoorEvent()
+		websockets.broadcast(
+			connections=self.connections,
+			message=new_event.model_dump_json()
+		)
+
+	async def send_letmein_request(self, stream_id):
+		stream_data = await self.redis_connection.xrange(
+			name="letmein:stream",
+			min=stream_id, max=stream_id,
+			count=1
+		)
+		_, letmein_data = stream_data[0]
+		new_event = LetMeInEvent(
+			name=letmein_data["name"],
+			entrance=letmein_data["entrance"]
+		)
 		websockets.broadcast(
 			connections=self.connections,
 			message=new_event.model_dump_json()
